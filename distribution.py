@@ -1,12 +1,11 @@
 # Подключаем встроенные модули и библиотеки:
-import random
+from random import randint
 
 # Подключаем свои модули:
 import logic
 import printer
 
 # Нужные функции:
-
 def game_dist(game_list: dict, chat_id: str) -> list:
     """Отвечает за основную игру и распределяет информацию по другим функциям.
 
@@ -26,6 +25,21 @@ def game_dist(game_list: dict, chat_id: str) -> list:
         return chaos(lst_players, user_theme, themes, chat_id)
 
 
+def classic(lst_players: list, user_theme: str, themes: dict, chat_id: str, num_shpions: int = 1) -> list:
+    """Создает классическую игру и распределяет данные по другим функциям.
+
+     Args:
+         lst_players: Список игроков.
+         user_theme: Тема, которая выбрана пользователем в начале игры.
+         themes: Словарь тем со словами.
+         chat_id: ID чата пользователя.
+         num_shpions: Максимальное кол-во Шпионов.
+     """
+    shpions = logic.create_shpion(num_shpions, lst_players)
+    secret_word = logic.sec_word(user_theme, themes, chat_id)
+    return create_roles(lst_players, user_theme, secret_word, shpions)
+
+
 def chaos(lst_players: list, user_theme: str, themes: dict, chat_id: str) -> list:
     """Случайно выбирает и запускает 1 из 4 режимов Хаоса с шансом 25%.
 
@@ -35,7 +49,7 @@ def chaos(lst_players: list, user_theme: str, themes: dict, chat_id: str) -> lis
         themes: Словарь тем со словами.
         chat_id: ID чата пользователя.
     """
-    mode_chaos = random.randint(1, 100)
+    mode_chaos = randint(1, 100)
 
     if mode_chaos <= 25:
         shpions = lst_players
@@ -54,19 +68,20 @@ def chaos(lst_players: list, user_theme: str, themes: dict, chat_id: str) -> lis
         return classic(lst_players, user_theme, themes, chat_id)
 
 
-def classic(lst_players: list, user_theme: str, themes: dict, chat_id: str, num_shpions: int = 1) -> list:
-    """Создает классическую игру и распределяет данные по другим функциям.
+def random_secret_word(lst_players: list, user_theme: str, themes: dict, chat_id: str) -> list:
+    """Раздаёт каждому игроку индивидуальное случайное слово из выбранной темы.
 
-     Args:
-         lst_players: Список игроков.
-         user_theme: Тема, которая выбрана пользователем в начале игры.
-         themes: Словарь тем со словами.
-         chat_id: ID чата пользователя.
-         num_shpions: Максимальное кол-во Шпионов.
-     """
-    shpions = logic.create_shpion(num_shpions, lst_players)
-    secret_word = logic.sec_word(user_theme, themes, chat_id)
-    return create_roles(lst_players, user_theme, secret_word, shpions)
+    Args:
+        lst_players: Список игроков.
+        user_theme: Тема, которая выбрана пользователем в начале игры.
+        themes: Словарь тем со словами.
+        chat_id: ID чата пользователя.
+    """
+    all_roles = []
+    for _ in enumerate(lst_players):
+        secret_word = logic.sec_word(user_theme, themes, chat_id)
+        all_roles.append(printer.text_roles("live", user_theme, secret_word))
+    return all_roles
 
 
 def create_roles(lst_players: list, user_theme: str, secret_word: str, shpions: list) -> list:
@@ -84,20 +99,4 @@ def create_roles(lst_players: list, user_theme: str, secret_word: str, shpions: 
            all_roles.append(printer.text_roles("shpion", user_theme, secret_word))
         else:
             all_roles.append(printer.text_roles("live", user_theme, secret_word))
-    return all_roles
-
-
-def random_secret_word(lst_players: list, user_theme: str, themes: dict, chat_id: str) -> list:
-    """Раздаёт каждому игроку индивидуальное случайное слово из выбранной темы.
-
-    Args:
-        lst_players: Список игроков.
-        user_theme: Тема, которая выбрана пользователем в начале игры.
-        themes: Словарь тем со словами.
-        chat_id: ID чата пользователя.
-    """
-    all_roles = []
-    for _ in enumerate(lst_players):
-        secret_word = logic.sec_word(user_theme, themes, chat_id)
-        all_roles.append(printer.text_roles("live", user_theme, secret_word))
     return all_roles

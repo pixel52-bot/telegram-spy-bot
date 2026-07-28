@@ -1,2 +1,2 @@
 import telebot
-bot = telebot.TeleBot("Ваш токен")
+bot = telebot.TeleBot("8864660860:AAFvROkIMOYFxC1SZFa5eZZrFBLVm30tfV8")

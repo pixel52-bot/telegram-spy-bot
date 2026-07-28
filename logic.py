@@ -4,11 +4,11 @@ import random
 from loader import bot
 from telebot import types
 
+# Подключаем свои модули:
 import button
 import printer
 
 # Нужные функции:
-
 def players(num_players: int) -> list:
     """Создаёт список игроков на основе ввода имён или их количества.
 
@@ -77,6 +77,57 @@ def create_theme(themes: dict, theme_name: str, words: tuple, chat_id: str):
     json_dump(themes)
 
 
+def get_theme_name(message: types.Message, themes: dict):
+    """Принимает имя новой темы от пользователя и отправляет его в другую функцию.
+
+    Args:
+        message: Объект, содержащий данные о сообщении и пользователе.
+        themes: Словарь тем со словами.
+
+    Returns:
+        Выходит из функции в случае ошибки.
+    """
+    chat_id = message.chat.id
+    new_theme = message.text.strip()
+    if not new_theme:
+        bot.send_message(chat_id, printer.text_create_theme('error_theme'), reply_markup=button.markup_start(), parse_mode='Markdown')
+        return
+    elif themes.get(str(chat_id), False):
+        for old_theme in themes[str(chat_id)]:
+            if new_theme.lower() == old_theme.lower():
+                bot.send_message(chat_id, printer.text_create_theme('such_theme'), reply_markup=button.markup_start(),
+                                 parse_mode='Markdown')
+                return
+    sent = bot.send_message(message.chat.id, printer.text_create_theme("words"),
+                           reply_markup=button.markup_go_or_back(), parse_mode='Markdown')
+    bot.clear_step_handler_by_chat_id(chat_id)
+    bot.register_next_step_handler(sent, get_theme_words, new_theme, themes)
+
+
+def get_theme_words(message: types.Message, new_theme: str, themes: dict):
+    """Получает слова для новой темы, сохраняет тему и подтверждает пользователю.
+
+    Args:
+        message: Объект, содержащий данные о сообщении и пользователе.
+        new_theme: Тема, которую ввёл пользователь.
+        themes: Словарь тем со словами.
+
+    Returns:
+        Выходит из функции в случае ошибки.
+    """
+
+    words = tuple(word.strip() for word in message.text.split(',') if word.strip())
+
+    if not words:
+        bot.send_message(message.chat.id, printer.text_create_theme('error_words'), parse_mode='Markdown')
+        return
+    chat_id = message.chat.id
+    create_theme(themes, new_theme, words, str(chat_id))
+    bot.send_message(chat_id, printer.text_create_theme("successful"), parse_mode='Markdown')
+    bot.send_message(chat_id, printer.text_welcome(), reply_markup=button.markup_start(),
+                     parse_mode='Markdown')
+
+
 def delete_theme(themes: dict, delete_theme: str, chat_id: str):
     """Удаляет тему, выбранную пользователем, кроме 4 основных тем.
 
@@ -89,6 +140,22 @@ def delete_theme(themes: dict, delete_theme: str, chat_id: str):
     if themes[chat_id] == {}:
         themes.pop(chat_id)
     json_dump(themes)
+
+
+def edit_message(text: str, call: types.CallbackQuery, markup: str = None) -> str:
+    """Изменяет преведущее сообщение в боте и выдаёт новую информацию (текст, кнопки) по введённым аргументам.
+
+    Args:
+        text: Текст, который будет выведен пользователю.
+        call: Объект запроса, содержащий информацию о callback_data, пользователе и нажатой кнопке
+        markup: Объект инлайн-клавиатуры с кнопками.
+
+    Returns:
+        Возвращает, если нужно использовать `bot.register_next_step_handler()` с сообщением внутри.
+    """
+
+    return bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=markup,
+                                 parse_mode='Markdown')
 
 
 def json_load() -> dict:
@@ -215,74 +282,3 @@ def json_dump(themes: dict):
     """
     with open('themes.json', 'w', encoding='utf-8') as file:
         json.dump(themes, file, indent=4, ensure_ascii=False)
-
-
-def get_theme_name(message: types.Message, themes: dict):
-    """Принимает имя новой темы от пользователя и отправляет его в другую функцию.
-
-    Args:
-        message: Объект, содержащий данные о сообщении и пользователе.
-        themes: Словарь тем со словами.
-
-    Returns:
-        Выходит из функции в случае ошибки.
-    """
-    chat_id = message.chat.id
-    new_theme = message.text.strip()
-    if not new_theme:
-        bot.send_message(chat_id, printer.text_create_theme('error_theme'), reply_markup=button.markup_start(), parse_mode='Markdown')
-        return
-    elif themes.get(str(chat_id), False):
-        for old_theme in themes[str(chat_id)]:
-            if new_theme.lower() == old_theme.lower():
-                bot.send_message(chat_id, printer.text_create_theme('such_theme'), reply_markup=button.markup_start(),
-                                 parse_mode='Markdown')
-                return
-    sent = bot.send_message(message.chat.id, printer.text_create_theme("words"),
-                           reply_markup=button.markup_go_or_back(), parse_mode='Markdown')
-    bot.clear_step_handler_by_chat_id(chat_id)
-    bot.register_next_step_handler(sent, get_theme_words, new_theme, themes)
-
-
-
-def get_theme_words(message: types.Message, new_theme: str, themes: dict):
-    """Получает слова для новой темы, сохраняет тему и подтверждает пользователю.
-
-    Args:
-        message: Объект, содержащий данные о сообщении и пользователе.
-        new_theme: Тема, которую ввёл пользователь.
-        themes: Словарь тем со словами.
-
-    Returns:
-        Выходит из функции в случае ошибки.
-    """
-    print("get_theme_words")
-    words = tuple(word.strip() for word in message.text.split(',') if word.strip())
-
-    if not words:
-        bot.send_message(message.chat.id, printer.text_create_theme('error_words'), parse_mode='Markdown')
-        return
-    print("дошел")
-    chat_id = message.chat.id
-    create_theme(themes, new_theme, words, str(chat_id))
-    bot.send_message(chat_id, printer.text_create_theme("successful"), parse_mode='Markdown')
-    bot.send_message(chat_id, printer.text_welcome(), reply_markup=button.markup_start(),
-                     parse_mode='Markdown')
-
-
-def edit_message(text: str, call: types.CallbackQuery, markup: str = None) -> str:
-    """Изменяет преведущее сообщение в боте и выдаёт новую информацию (текст, кнопки) по введённым аргументам.
-
-    Args:
-        text: Текст, который будет выведен пользователю.
-        call: Объект запроса, содержащий информацию о callback_data, пользователе и нажатой кнопке
-        markup: Объект инлайн-клавиатуры с кнопками.
-
-    Returns:
-        Возвращает, если нужно использовать `bot.register_next_step_handler()` с сообщением внутри.
-    """
-
-    return bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=markup,
-                                 parse_mode='Markdown')
-
-
