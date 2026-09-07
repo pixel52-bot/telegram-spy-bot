@@ -1,4 +1,4 @@
 import telebot
 import os
 os.getenv("BOT_TOKEN")
-bot = telebot.TeleBot("Ваш токен")
+bot = telebot.TeleBot("BOT_TOKENgg")
