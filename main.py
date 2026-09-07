@@ -9,6 +9,7 @@ import distribution as dist
 import button
 import printer
 from loader import bot
+import server
 
 # Нужные переменные:
 current_games = {}  # Параметры текущей игры.
@@ -239,6 +240,9 @@ def call_nav(call: types.CallbackQuery):
         call_information(call)
 
 
+
+
+server.start_server()
 
 bot.polling(none_stop=True)
 
