@@ -1,4 +1,5 @@
 # Подключаем встроенные модули и библиотеки:
+# Подключаем встроенные модули и библиотеки:
 from random import randint
 
 # Подключаем свои модули:
@@ -6,15 +7,15 @@ import logic
 import printer
 
 # Нужные функции:
-def game_dist(game_list: dict, chat_id: str) -> list:
+def game_dist(game_list: dict, chat_id: str, themes) -> list:
     """Отвечает за основную игру и распределяет информацию по другим функциям.
 
     Args:
         game_list: Cловарь с параметрами игры.
         chat_id: ID чата пользователя.
+        themes: Словарь тем со словами
 
     """
-    themes = game_list['themes']
     lst_players = game_list['lst_players']
     user_theme = game_list['user_theme']
     game_mode = game_list['game_mode']
@@ -57,7 +58,7 @@ def chaos(lst_players: list, user_theme: str, themes: dict, chat_id: str) -> lis
         return create_roles(lst_players, user_theme, secret_word, shpions)
 
     elif mode_chaos <= 50:
-        shpions = ""
+        shpions = []
         secret_word = logic.sec_word(user_theme, themes, chat_id)
         return create_roles(lst_players, user_theme, secret_word, shpions)
 
@@ -78,10 +79,13 @@ def random_secret_word(lst_players: list, user_theme: str, themes: dict, chat_id
         chat_id: ID чата пользователя.
     """
     all_roles = []
+    subsidiary = []
     for _ in enumerate(lst_players):
         secret_word = logic.sec_word(user_theme, themes, chat_id)
         all_roles.append(printer.text_roles("live", user_theme, secret_word))
-    return all_roles
+        subsidiary.append(f"random_live_{secret_word}")
+    subsidiary.append(user_theme)
+    return all_roles, subsidiary
 
 
 def create_roles(lst_players: list, user_theme: str, secret_word: str, shpions: list) -> list:
@@ -94,9 +98,13 @@ def create_roles(lst_players: list, user_theme: str, secret_word: str, shpions: 
         shpions: Список Шпионов.
     """
     all_roles = []
-    for _, name in enumerate(lst_players):
-        if name in shpions:
+    subsidiary = []
+    for idx in lst_players:
+        if idx in shpions:
            all_roles.append(printer.text_roles("shpion", user_theme, secret_word))
+           subsidiary.append("shpion")
         else:
             all_roles.append(printer.text_roles("live", user_theme, secret_word))
-    return all_roles
+            subsidiary.append("live")
+    subsidiary.append(user_theme), subsidiary.append(secret_word)
+    return all_roles, subsidiary

@@ -1,26 +1,20 @@
 # Подключаем встроенные модули и библиотеки:
 import json
 import random
-from loader import bot
 from telebot import types
+import os
 
 # Подключаем свои модули:
 import button
 import printer
+import loader 
+from loader import bot
 
 # Нужные функции:
-def players(num_players: int) -> list:
-    """Создаёт список игроков на основе ввода имён или их количества.
-
-    Args:
-        num_players: Количество игроков.
-
-    Returns:
-        Возвращает список игроков.
-    """
+def lst_players(num):
     lst_players = []
-    for val in range(num_players):
-        lst_players.append(f'Игрок {val + 1}')
+    for i in range(num):
+        lst_players.append(i + 1)
     return lst_players
 
 
@@ -56,10 +50,27 @@ def create_shpion(num_shpions: int, lst_players: list) -> list:
     shpion1 = random.choice(lst_players)
     shpions = [shpion1]
     if num_shpions == 2:
-        lst_without_shpion1 = [i for i in lst_players if i != shpion1]
+        lst_without_shpion1 = [i for i in range(lst_players) if i != shpion1]
         shpion2 = random.choice(lst_without_shpion1)
         shpions.append(shpion2)
     return shpions
+
+
+def current_games(current_games, chat_id):
+    count_players = len(current_games[chat_id]["lst_players"])
+    num_shpions = current_games[chat_id]["num_shpions"]
+    user_theme = current_games[chat_id]["user_theme"]
+    game_mode = current_games[chat_id]["game_mode"]
+
+    if game_mode == 'classic':
+        mode_display = "📜 Классика"
+        shpions_text = f"*{num_shpions}* 🕵️‍♂️"
+        peace_text = f"*{count_players - num_shpions}* 🧑‍🌾"
+    else:
+        mode_display = "🎲 Хаос"
+        shpions_text = "_Случайно_ 🔮"
+        peace_text = "_Случайно_ 🔮"
+    return [count_players, peace_text, shpions_text, user_theme, mode_display]
 
 
 def create_theme(themes: dict, theme_name: str, words: tuple, chat_id: str):
@@ -77,12 +88,19 @@ def create_theme(themes: dict, theme_name: str, words: tuple, chat_id: str):
     json_dump(themes)
 
 
-def get_theme_name(message: types.Message, themes: dict):
+def rename_theme(choice_theme, new_theme, chat_id, themes):
+    themes[str(chat_id)][new_theme] = themes[str(chat_id)].pop(choice_theme)
+    json_dump(themes)
+
+
+def get_theme_name(message: types.Message, themes: dict, flag: str = "need", choice_theme=None):
     """Принимает имя новой темы от пользователя и отправляет его в другую функцию.
 
     Args:
         message: Объект, содержащий данные о сообщении и пользователе.
         themes: Словарь тем со словами.
+        words:
+        choice_theme:
 
     Returns:
         Выходит из функции в случае ошибки.
@@ -90,42 +108,60 @@ def get_theme_name(message: types.Message, themes: dict):
     chat_id = message.chat.id
     new_theme = message.text.strip()
     if not new_theme:
-        bot.send_message(chat_id, printer.text_create_theme('error_theme'), reply_markup=button.markup_start(), parse_mode='Markdown')
+        bot.send_message(chat_id, printer.TEXT_ERROR_CREATE_THEME, reply_markup=button.markup_start(),
+                         parse_mode='Markdown')
         return
     elif themes.get(str(chat_id), False):
         for old_theme in themes[str(chat_id)]:
             if new_theme.lower() == old_theme.lower():
-                bot.send_message(chat_id, printer.text_create_theme('such_theme'), reply_markup=button.markup_start(),
+                bot.send_message(chat_id, printer.TEXT_ERROR_SUCH_THEME, reply_markup=button.markup_start(),
                                  parse_mode='Markdown')
                 return
-    sent = bot.send_message(message.chat.id, printer.text_create_theme("words"),
-                           reply_markup=button.markup_go_or_back(), parse_mode='Markdown')
-    bot.clear_step_handler_by_chat_id(chat_id)
-    bot.register_next_step_handler(sent, get_theme_words, new_theme, themes)
+    if flag == "need":
+        sent = bot.send_message(message.chat.id, printer.TEXT_CREATE_WORDS,
+                                reply_markup=button.markup_back(["themes", "create"], "🔙 Назад в МЕНЮ СОЗДАНИЯ ТЕМЫ"), parse_mode='Markdown')
+        bot.clear_step_handler_by_chat_id(chat_id)
+        bot.register_next_step_handler(sent, get_theme_words, new_theme, themes)
+
+    else:
+        if themes.get(str(chat_id), False):
+            for old_theme in themes[str(chat_id)]:
+                if new_theme.lower() == old_theme.lower():
+                    bot.send_message(chat_id, printer.TEXT_ERROR_SUCH_THEME,
+                                     reply_markup=button.markup_start(),
+                                     parse_mode='Markdown')
+                    return
+        rename_theme(choice_theme, new_theme, chat_id, themes)
+        bot.send_message(chat_id, printer.TEXT_CREATE_FINISH, reply_markup=button.markup_back(["themes", "start"],"🔙 Назад в 📂 ТЕМЫ"), parse_mode='Markdown')
 
 
-def get_theme_words(message: types.Message, new_theme: str, themes: dict):
+def get_theme_words(message: types.Message, new_theme: str, themes: dict, flag: str = "need", add_words=""):
     """Получает слова для новой темы, сохраняет тему и подтверждает пользователю.
 
     Args:
         message: Объект, содержащий данные о сообщении и пользователе.
         new_theme: Тема, которую ввёл пользователь.
         themes: Словарь тем со словами.
+        word:
+        add_words:
 
     Returns:
         Выходит из функции в случае ошибки.
     """
+    need_words = None
+    if flag == "need":
+        need_words = list(word.strip() for word in message.text.split(',') if word.strip())
 
-    words = tuple(word.strip() for word in message.text.split(',') if word.strip())
-
-    if not words:
-        bot.send_message(message.chat.id, printer.text_create_theme('error_words'), parse_mode='Markdown')
+    if not need_words:
+        bot.send_message(message.chat.id, printer.TEXT_ERROR_CREATE_WORDS, parse_mode='Markdown')
         return
+
+    if add_words == "add":
+        old_words = themes[str(message.chat.id)][new_theme]
+        need_words = old_words + need_words
     chat_id = message.chat.id
-    create_theme(themes, new_theme, words, str(chat_id))
-    bot.send_message(chat_id, printer.text_create_theme("successful"), parse_mode='Markdown')
-    bot.send_message(chat_id, printer.text_welcome(), reply_markup=button.markup_start(),
-                     parse_mode='Markdown')
+    create_theme(themes, new_theme, need_words, str(chat_id))
+    bot.send_message(chat_id, printer.TEXT_CREATE_FINISH, reply_markup=button.markup_back(["themes", "start"],"🔙 Назад в 📂 ТЕМЫ"), parse_mode='Markdown')
 
 
 def delete_theme(themes: dict, delete_theme: str, chat_id: str):
@@ -142,20 +178,50 @@ def delete_theme(themes: dict, delete_theme: str, chat_id: str):
     json_dump(themes)
 
 
-def edit_message(text: str, call: types.CallbackQuery, markup: str = None) -> str:
+def view_words(MAIN_THEMES, themes: dict, choice_theme: str, chat_id: int, act):
+    if choice_theme in MAIN_THEMES:
+        lst_words = themes["Main_themes"][choice_theme]
+    else:
+        lst_words = themes[str(chat_id)][choice_theme]
+
+    if act == "view":
+        if len(lst_words) > 20:
+            lst_words = lst_words[:15]
+            lst_words = "\n".join(lst_words)
+            status = "txt"
+
+        else:
+            lst_words = "\n".join(lst_words)
+            status = "message"
+    else:
+        status = "txt"
+    return lst_words, choice_theme, status
+
+
+def send_txt(chat_id, lst):
+    txt_file = f"{str(chat_id)}_words.txt"
+    with open(txt_file, mode="w", encoding='utf-8') as f:
+        f.write("\n".join(lst))
+    with open(txt_file, mode="rb") as f:
+        bot.send_document(chat_id=chat_id, document=f, caption='📄 Полный список слов для темы успешно подготовлен.')
+    os.remove(txt_file)
+
+
+def edit_message(text: str, call: types.CallbackQuery, markup: str = None, parse: str = 'Markdown') -> str:
     """Изменяет преведущее сообщение в боте и выдаёт новую информацию (текст, кнопки) по введённым аргументам.
 
     Args:
         text: Текст, который будет выведен пользователю.
         call: Объект запроса, содержащий информацию о callback_data, пользователе и нажатой кнопке
         markup: Объект инлайн-клавиатуры с кнопками.
+        parse: Мод, который делает жирный шрифт, волнистость, курсивный текст  и т.п.
 
     Returns:
         Возвращает, если нужно использовать `bot.register_next_step_handler()` с сообщением внутри.
     """
 
     return bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=markup,
-                                 parse_mode='Markdown')
+                                 parse_mode=parse)
 
 
 def json_load() -> dict:
@@ -166,7 +232,9 @@ def json_load() -> dict:
     """
     try:
         with open('themes.json', 'r', encoding='utf-8') as file:
-            return json.load(file)
+            themes = json.load(file)
+            MAIN_THEMES = themes["Main_themes"]
+            return themes, MAIN_THEMES
     except (FileNotFoundError, json.JSONDecodeError):
         themes = {
             "Main_themes": {
@@ -271,7 +339,8 @@ def json_load() -> dict:
         }
 
         json_dump(themes)
-        return themes
+        MAIN_THEMES = tuple(themes["Main_themes"])
+        return themes, MAIN_THEMES
 
 
 def json_dump(themes: dict):
@@ -282,3 +351,17 @@ def json_dump(themes: dict):
     """
     with open('themes.json', 'w', encoding='utf-8') as file:
         json.dump(themes, file, indent=4, ensure_ascii=False)
+
+
+def send_photo(subsidiary, MAIN_THEMES, idx):
+    if subsidiary[-1] in MAIN_THEMES:
+        lst_parts = subsidiary[idx].split("_")
+        path = f"images/{subsidiary[-1]}/{lst_parts[2]}.jpg"
+    elif subsidiary[-2] not in MAIN_THEMES:
+        return
+    elif subsidiary[idx] == "live":
+        path = f"images/{subsidiary[-2]}/{subsidiary[-1]}.jpg"
+    else:
+        path = f"images/shpion.jpg"
+    with open(path, 'rb') as file:
+        return file.read()
