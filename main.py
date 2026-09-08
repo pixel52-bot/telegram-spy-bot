@@ -92,14 +92,15 @@ def call_game(call: types.CallbackQuery):
             logic.edit_message(printer.TEXT_NUM_SHPIONS, call, button.markup_main_create([button.markup_num_shpions], ['game', 'theme', current_games[chat_id]['user_theme']]))
 
         else:
-            lst_settings = logic.current_games(current_games, chat_id)
+            lst_setting = logic.current_games(current_games, chat_id)
             logic.edit_message(printer.text_current_game(lst_settings), call, button.markup_main_create([button.markup_go, "game_go"], ['game', 'theme', current_games[chat_id]['user_theme']]))
 
     elif action == 'shpion':
         data = call_data[2]
         current_games[chat_id]['num_shpions'] = int(data)
-        lst_settings = logic.current_games(current_games, chat_id)
-        logic.edit_message(printer.text_current_game(lst_settings), call, button.markup_main_create([button.markup_go_or_back, 'game_go'], ['game', 'mode', "classic"]))
+        lst_setting = logic.current_games(current_games, chat_id)
+        logic.edit_message(printer.text_current_game(lst_settings), call, button.markup_main_create([button.markup_go, "game_go"], ['game', 'theme', current_games[chat_id]['user_theme']]))
+
 
     elif action == 'go':
         logic.edit_message(printer.TEXT_START_GAME, call, button.markup_chek_role())
