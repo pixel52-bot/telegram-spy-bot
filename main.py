@@ -239,9 +239,6 @@ def call_nav(call: types.CallbackQuery):
     elif action == 'inf':
         call_information(call)
 
-
-
-
 server.start_server()
 
 bot.polling(none_stop=True)
