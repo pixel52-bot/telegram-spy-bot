@@ -49,3 +49,13 @@ def db_all_themes(chat_id: int) -> dict:
             themes[chat_id][theme_name] = tuple(word.strip() for word in words.split(',') if word.strip())
 
     return themes
+
+def db_update(old_theme: str, new_theme: str, chat_id: str):
+    """Обновляет тему в базе данных Supabase.
+
+    Args:
+        old_theme: Старая тема.
+        new_theme: Новая тема.
+        chat_id: ID чата пользователя.
+    """
+    supabase.table("themes").update({"theme_name": new_theme}).eq("chat_id", chat_id).eq("theme_name", old_theme).execute()

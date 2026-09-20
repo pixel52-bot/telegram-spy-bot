@@ -6,6 +6,7 @@ import button
 import printer
 from loader import bot
 from loader import supabase 
+from logic import database as db
 
 # Нужные функции:
 def create_theme(theme_name: str, words: tuple, chat_id: str):
@@ -21,11 +22,21 @@ def create_theme(theme_name: str, words: tuple, chat_id: str):
     supabase.table("themes").insert({"chat_id": chat_id, "theme_name": theme_name, "words": words}).execute()
 
 
-def rename_theme(choice_theme, new_theme, chat_id, themes):
-    themes[str(chat_id)][new_theme] = themes[str(chat_id)].pop(choice_theme)
+def rename_theme(choice_theme, chat_id):
+    """Переименовывает тему, выбранную пользователем."""
+    user_themes = db.db_only_themes(chat_id, "user")
+
+    sent = bot.send_message(chat_id, printer.TEXT_CREATE_WORDS,
+            reply_markup=button.markup_back(["themes", "create"], "🔙 Назад в МЕНЮ СОЗДАНИЯ ТЕМЫ"), parse_mode='Markdown')
+    
+    bot.clear_step_handler_by_chat_id(chat_id)
+    theme_name = bot.register_next_step_handler(sent, get_theme_words, user_themes)
+
+    db.db_update(choice_theme, theme_name, chat_id)
 
 
-def get_theme_name(message: types.Message, themes: dict, flag: str = "need", choice_theme=None):
+
+def get_theme_name(message: types.Message):
     """Принимает имя новой темы от пользователя и отправляет его в другую функцию.
 
     Args:
@@ -37,37 +48,15 @@ def get_theme_name(message: types.Message, themes: dict, flag: str = "need", cho
     Returns:
         Выходит из функции в случае ошибки.
     """
-    chat_id = message.chat.id
     new_theme = message.text.strip()
-    if not new_theme:
-        bot.send_message(chat_id, printer.TEXT_ERROR_CREATE_THEME, reply_markup=button.markup_start(),
-                         parse_mode='Markdown')
-        return
-    elif themes.get(str(chat_id), False):
-        for old_theme in themes[str(chat_id)]:
-            if new_theme.lower() == old_theme.lower():
-                bot.send_message(chat_id, printer.TEXT_ERROR_SUCH_THEME, reply_markup=button.markup_start(),
-                                 parse_mode='Markdown')
-                return
-    if flag == "need":
-        sent = bot.send_message(message.chat.id, printer.TEXT_CREATE_WORDS,
-                                reply_markup=button.markup_back(["themes", "create"], "🔙 Назад в МЕНЮ СОЗДАНИЯ ТЕМЫ"), parse_mode='Markdown')
-        bot.clear_step_handler_by_chat_id(chat_id)
-        bot.register_next_step_handler(sent, get_theme_words, new_theme, themes)
+    # Проверка:
 
-    else:
-        if themes.get(str(chat_id), False):
-            for old_theme in themes[str(chat_id)]:
-                if new_theme.lower() == old_theme.lower():
-                    bot.send_message(chat_id, printer.TEXT_ERROR_SUCH_THEME,
-                                     reply_markup=button.markup_start(),
-                                     parse_mode='Markdown')
-                    return
-        rename_theme(choice_theme, new_theme, chat_id, themes)
-        bot.send_message(chat_id, printer.TEXT_CREATE_FINISH, reply_markup=button.markup_back(["themes", "start"],"🔙 Назад в 📂 ТЕМЫ"), parse_mode='Markdown')
+    return new_theme
 
 
-def get_theme_words(message: types.Message, new_theme: str, themes: dict, flag: str = "need", add_words=""):
+
+
+def get_theme_words(message: types.Message):
     """Получает слова для новой темы, сохраняет тему и подтверждает пользователю.
 
     Args:
@@ -80,17 +69,17 @@ def get_theme_words(message: types.Message, new_theme: str, themes: dict, flag: 
     Returns:
         Выходит из функции в случае ошибки.
     """
-    need_words = None
 
-    need_words = list(word.strip() for word in message.text.split(',') if word.strip())
 
-    if not need_words:
-        bot.send_message(message.chat.id, printer.TEXT_ERROR_CREATE_WORDS, parse_mode='Markdown')
-        return
+    # need_words = list(word.strip() for word in message.text.split(',') if word.strip())
+
+    # if not need_words:
+    #     bot.send_message(message.chat.id, printer.TEXT_ERROR_CREATE_WORDS, parse_mode='Markdown')
+    #     return
     
-    chat_id = message.chat.id
-    create_theme(new_theme, need_words, str(chat_id))
-    bot.send_message(chat_id, printer.TEXT_CREATE_FINISH, reply_markup=button.markup_back(["themes", "start"],"🔙 Назад в 📂 ТЕМЫ"), parse_mode='Markdown')
+    # chat_id = message.chat.id
+    # create_theme(new_theme, need_words, str(chat_id))
+    # bot.send_message(chat_id, printer.TEXT_CREATE_FINISH, reply_markup=button.markup_back(["themes", "start"],"🔙 Назад в 📂 ТЕМЫ"), parse_mode='Markdown')
 
 
 def delete_theme(delete_theme: str, chat_id: str):
@@ -104,7 +93,7 @@ def delete_theme(delete_theme: str, chat_id: str):
     supabase.table("themes").delete().eq("chat_id" == chat_id, "theme_name" == delete_theme).execute()
 
 
-def view_words(themes: dict, choice_theme: str, chat_id: int, act):
+def view_words(choice_theme: str, chat_id: int, act):
     if choice_theme in MAIN_THEMES:
         lst_words = themes["Main_themes"][choice_theme]
     else:

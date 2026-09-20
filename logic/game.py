@@ -4,10 +4,10 @@ import random
 from logic import utils
 from telebot import types
 from loader import bot
-from logic import db
-from logic import printer
-from logic import button
-from logic import game
+from logic import database as db
+import printer
+import button
+
 
 # Нужные функции:
 def lst_players(num):
