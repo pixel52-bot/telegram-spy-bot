@@ -1,5 +1,4 @@
 # Подключаем встроенные модули и библиотеки:
-# Подключаем встроенные модули и библиотеки:
 from random import randint
 
 # Подключаем свои модули:
@@ -7,19 +6,20 @@ import logic
 import printer
 
 # Нужные функции:
-def game_dist(game_list: dict, chat_id: str, themes) -> list:
+def game_dist(game_session) -> list:
     """Отвечает за основную игру и распределяет информацию по другим функциям.
 
     Args:
-        game_list: Cловарь с параметрами игры.
-        chat_id: ID чата пользователя.
+        game_session: Класс с параметрами игры.
         themes: Словарь тем со словами
 
     """
-    lst_players = game_list['lst_players']
-    user_theme = game_list['user_theme']
-    game_mode = game_list['game_mode']
-    num_shpions = game_list['num_shpions']
+    lst_players = game_session.lst_players
+    user_theme = game_session.user_theme
+    game_mode = game_session.game_mode
+    num_shpions = game_session.num_shpions
+    chat_id = game_session.chat_id
+    themes = logic.db_all_themes(chat_id)
     if game_mode == 'classic':
         return classic(lst_players, user_theme, themes, chat_id, num_shpions)
     else:

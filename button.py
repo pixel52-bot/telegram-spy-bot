@@ -48,7 +48,7 @@ def markup_all_themes(lst_inf_func) -> types.InlineKeyboardMarkup:
         Объект разметки с кнопками доступных тем.
     """
     themes = lst_inf_func[0]
-    chat_id = str(lst_inf_func[1])
+    chat_id = lst_inf_func[1]
     callback_prefix = lst_inf_func[2]
     if chat_id in list(themes):
         need_themes = list(themes["Main_themes"]) + list(themes[chat_id])

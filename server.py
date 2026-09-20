@@ -1,8 +1,9 @@
+# Подключаем встроенные модули и библиотеки:
 import os
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-
+# Нужный класс:
 class KeepAliveHandler(BaseHTTPRequestHandler):
     """Обрабатывает входящие HTTP-запросы от сервисов мониторинга (cron-job.org)."""
 
@@ -15,7 +16,7 @@ class KeepAliveHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
 
-
+# Нужные функции:
 def _run_server():
     """Слушает порт Render и держит соединение открытым."""
     port = int(os.getenv("PORT", 8080))
